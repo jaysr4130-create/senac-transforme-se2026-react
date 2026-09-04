@@ -3,8 +3,26 @@ import { Link } from "react-router";
 
 function Auth() {
     /*const [variavel, funcaoAlteraVariavel] = useState('valor inicial');*/
-    const [email, setEmail] =useState("")
-    const [senha, setSenha] =useState("")
+    const [email, setEmail] = useState("")
+    const [senha, setSenha] = useState("")
+    const [mensagem, setMensagem] =useState("")
+
+function handleLogin () {
+    const users = JSON.parse(localStorage.getItem('users'))
+    let user = users.find(u =>{
+        returnu.email == email
+    })
+    if (!user){
+        setMensagem("Usuário não encontrado")
+
+        return
+    }
+    if(user.senha == pass){
+        localStorage.setItem("Logado", JSON.stringify())
+    }else{
+        setMensagem("Usuário encontrado")
+    }
+}
 
     return (
 <> 
@@ -16,7 +34,7 @@ function Auth() {
 
 
         <form className="text-center  background-color flex flex-col rounded-full p-2" id="formLogin">
-            
+            <></>
         <span className="text-left">Email: </span>
         <input 
         className="rounded-full p-2" 
@@ -35,7 +53,7 @@ function Auth() {
         onChange={(e) => setSenha(e.target.value)} />
         {senha}
            
-            <Link className="font  shadow-lg mr-2 p-2 px-4 bg-primary hover:shadow-inner rounded text-white ml-auto" to="/painel" >Entrar</Link>
+            <a onClick={handleLogin} className="font  shadow-lg mr-2 p-2 px-4 bg-primary hover:shadow-inner rounded text-white ml-auto" to="/painel" >Entrar</a>
         
 
         </form>
