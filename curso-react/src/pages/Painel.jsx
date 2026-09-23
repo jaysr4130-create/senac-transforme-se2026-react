@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { supabase } from '../../utils/supabase'
+
 import { Link } from "react-router";
 
 function Painel() {
@@ -9,6 +11,8 @@ function Painel() {
     const [isEdit, setIsEdit] = useState(false)
     const [index, setIndex] = useState(-1)
     
+    const [spiner, setSpiner] = useState(false);
+    const [msg, setMsg] = useState('');
 
     useEffect(
         ()=>{
@@ -37,24 +41,50 @@ function Painel() {
         setIndex(indice)
     }
 
-    function handleRegister() {
-        let newUsers = []
-        if(index != -1){
-            newUsers = [...users] 
-            newUsers = [index] = user;
-        }else{
-         newUsers = [...users, user] 
+    async function handleRegister() {
+        setSpiner(true)
+        const {data: authData, error: authError} = await supabase.auth.signUp({
+            email: user.email,
+            password: user.senha
+        });
+        if(authError){
+            //console.log(authError.message)
+            setMsg(authError.message)
+            setSpiner(false)
+            return;
+        }
+        
+        if(!authData){
+            setMsg("Não foi possível cadastrar a internet")
+            setSpiner(false)
+            return;
+        }
+
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: user.email, password: user.senha}); 
+
+        if(loginError){
+            setMsg(loginError.message)
+            setSpiner(false)
+            return;
         }
 
 
+        const { error: profileError } = await supabase .from('collaborators') .insert({
+            user_id: loginData.user.id,
+            cpf: user.cpf
+        });
         
-        setUsers(newUsers);
-        localStorage.setItem('users', JSON.stringify(newUsers))
-        setUser({})
-        setModal(false)
-        setIsEdit(false)
-        setIndex(-1)
+        if(profileError){
+            setMsg(profileError.message)
+            setSpiner(false)
+            return;
+
+        }
     }
+
+
+        
+      
 
     return (
         <>
@@ -109,11 +139,14 @@ function Painel() {
                             <span className="text-left">Data de nascimento: </span>
                             <input value={user.nascimento} nChange={ (e) => setUser({...user, nascimento: e.target.value}) } type="date" />
 
+                            <span className="text-left">CPF: </span>
+                            <input value={user.cpf} nChange={ (e) => setUser({...user, cpf: e.target.value}) } type="text" />
+
 
                             { index != -1 && <a onClick={()=> setIsEdit(false)} className="mt-5 bg-primary text-black text-center rounded-md py-2 bg-red-300">Cancelar</a>}
-                            <a onClick={handleRegister} className="mt-5 bg-primary text-white text-center rounded-md py-2">Salvar</a>
+                            <a onClick={handleRegister} className="mt-5 bg-primary text-white text-center rounded-md py-2">{spiner? '...':'Salvar'}</a>
                             
-
+{msg}
                         </form>): //else
                             (
                                 <>
@@ -121,10 +154,11 @@ function Painel() {
                                 <p>Email: {user.email}</p>
                                 <p>Nascimento: {user.nascimento}</p>
                                 <p>Senha: {user.senha}</p>
+                                <p>Cpf: {user.cpf}</p>
                                  <a onClick={()=> setIsEdit(true)} className="mt-5 bg-primary text-black text-center rounded-md py-2 bg-yellow-500">Editar</a>
                                 </>
                             )
-}
+                        }
                     </div>
                 </div>
             )}
