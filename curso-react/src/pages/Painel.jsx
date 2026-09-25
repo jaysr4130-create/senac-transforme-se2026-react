@@ -22,30 +22,55 @@ function Painel() {
         []
     );
     useEffect(()=> {
-        const usersTemp = JSON.parse(localStorage.getItem('users')) || []
-        if(usersTemp) setUsers(usersTemp)
+        loadUsers()
     },[])
 
-    function deleteUser (index){
-        const newUsers = users.filter((u,i) => {
-
-            return i !=index
-        })
-        setUsers(newUsers);
-        localStorage.setItem('users', JSON.stringify(newUsers))
+    async function loadUsers(){
+        const{data, error} = await supabase.from('collaborators').select('*')
+        if(error){
+            setMsg(error.message)
+            return;
+        }
+        setUsers(data)
     }
 
-    function updateUser(indice){
+    async function editUser(){
+         const { data, error } = await supabase
+            .from('collaborators')
+            .update(user)
+            .eq('id', index);
+
+            if(error){
+                setMsg(error.message)
+                setSpiner(false)
+                return;
+            }
+            setMsg("Usuário editado")
+            setSpiner(false)
+            loadUsers()
+    }
+
+   async function deleteUser (index){
+        
+            const { error } = await supabase
+              .from('collaborators')
+              .delete()
+              .eq('some_column', 'someValue')
+          
+    }
+
+    function updateUser(user){
         setModal(true)
-        setUser(users[indice] )
-        setIndex(indice)
+        setUser(user)
+        setIndex(user.id)
     }
 
     async function handleRegister() {
+        //console.log(user)
         setSpiner(true)
         const {data: authData, error: authError} = await supabase.auth.signUp({
             email: user.email,
-            password: user.senha
+            password: user.password
         });
         if(authError){
             //console.log(authError.message)
@@ -60,7 +85,7 @@ function Painel() {
             return;
         }
 
-        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: user.email, password: user.senha}); 
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: user.email, password: user.password}); 
 
         if(loginError){
             setMsg(loginError.message)
@@ -69,10 +94,16 @@ function Painel() {
         }
 
 
-        const { error: profileError } = await supabase .from('collaborators') .insert({
-            user_id: loginData.user.id,
-            cpf: user.cpf
-        });
+        const { email, password, ...collaboratorData } = user;
+
+        //console.log(collaboratorData)
+
+        const { error: profileError } = await supabase
+            .from('collaborators')
+            .insert({
+                ...collaboratorData,
+                user_id: loginData.user.id
+            });
         
         if(profileError){
             setMsg(profileError.message)
@@ -80,6 +111,10 @@ function Painel() {
             return;
 
         }
+
+        setSpiner(false)
+        setMsg("Cadastrado com Sucesso")
+        loadUsers()
     }
 
 
@@ -104,8 +139,8 @@ function Painel() {
                             setUser({})
                             setIndex(-1)
                         }}
-                             className="bg-prices absolute top-0 right-0 px-2
-            rounded-full cursor-pointer">X</a>
+                            className="bg-prices absolute top-0 right-0 px-2
+                            rounded-full cursor-pointer">X</a>
 
                         <h2>Cadastre um novo usuário</h2>
                         <p>Preencha as informações abaixo</p>
@@ -114,47 +149,55 @@ function Painel() {
                         <form className="flex flex-col">
 
                             <span className="text-left">Nome: </span>
-                            <input value={user.nome} 
+                            <input value={user.nome_colaborador} 
                             onChange={ 
-                                (e) => setUser({...user, nome: e.target.value}
+                                (e) => setUser({...user, nome_colaborador: e.target.value}
 
                                 ) } 
                                 type="text" 
                                 placeholder="Digite seu nome completo" 
                                 className="text-center" />
+                            {index == -1 &&(
+                                <>
+                                    <span className="text-left">Email: </span>
+                                    <input value={user.email} onChange={ (e) => setUser({...user, email: e.target.value} ) }  type="email" placeholder="Digite o seu melhor email"  className="text-center" />
 
-                            <span className="text-left">Email: </span>
-                            <input value={user.email}
-                            onChange={
-                                 (e) => setUser({...user, email: e.target.value}
-
-                                 ) } 
-                                 type="email"
-                                  placeholder="Digite o seu melhor email" 
-                                  className="text-center" />
-
-                            <span className="text-left">Senha: </span>
-                            <input    onChange={ (e) => setUser({...user, senha: e.target.value}) } type="password" placeholder="Letra maiúscula e números" className="text-center" />
-
+                                    <span className="text-left">Senha: </span>
+                                    <input    onChange={ (e) => setUser({...user, password: e.target.value}) } type="password" placeholder="Letra maiúscula e números" className="text-center" />
+                                </>
+                            )}
+                            
                             <span className="text-left">Data de nascimento: </span>
-                            <input value={user.nascimento} nChange={ (e) => setUser({...user, nascimento: e.target.value}) } type="date" />
+                            <input value={user.nascimento} onChange={ (e) => setUser({...user, nascimento: e.target.value}) } type="date" />
 
                             <span className="text-left">CPF: </span>
-                            <input value={user.cpf} nChange={ (e) => setUser({...user, cpf: e.target.value}) } type="text" />
+                            <input value={user.cpf} onChange={ (e) => setUser({...user, cpf: e.target.value}) } type="text" />
+
+                            <span className="text-left">Matrícula: </span>
+                            <input value={user.matricula} onChange={ (e) => setUser({...user, matricula: e.target.value}) } type="text" />
 
 
                             { index != -1 && <a onClick={()=> setIsEdit(false)} className="mt-5 bg-primary text-black text-center rounded-md py-2 bg-red-300">Cancelar</a>}
-                            <a onClick={handleRegister} className="mt-5 bg-primary text-white text-center rounded-md py-2">{spiner? '...':'Salvar'}</a>
+                            <a onClick={
+                                () => {
+                                    if(index == -1)
+                                        handleRegister()
+                                    else
+                                        editUser()
+                            } 
+                            }
+                            className="mt-5 bg-primary text-white text-center rounded-md py-2">{spiner? '...':'Salvar'}</a>
                             
 {msg}
                         </form>): //else
                             (
                                 <>
-                                <p>Nome: {user.nome}</p>
+                                <p>Nome: {user.nome_colaborador}</p>
                                 <p>Email: {user.email}</p>
                                 <p>Nascimento: {user.nascimento}</p>
                                 <p>Senha: {user.senha}</p>
                                 <p>Cpf: {user.cpf}</p>
+                                <p>Matrícula: {user.matricula}</p>
                                  <a onClick={()=> setIsEdit(true)} className="mt-5 bg-primary text-black text-center rounded-md py-2 bg-yellow-500">Editar</a>
                                 </>
                             )
@@ -165,14 +208,15 @@ function Painel() {
             <table>
                 <thead>
                     <th>Nome</th>
-                    <th>Email</th>
+                    <th>Cpf</th>
                     <th>Ações</th>
                 </thead>
                 <tbody className="font-secondary">
-                    {users.map( (u, i) => (
-                        <tr>
-                            <td>{u.nome}</td>
-                            <td>{u.email}</td>
+                    {users.map( (u) => (
+                        <tr key={u.id}>
+                            <td>{u.nome_colaborador}</td>
+                            <td>{u.cpf}</td>
+                            <td>{u.matricula}</td>
                             <td>
                                 <a className='curso-pointer
                                 px-3
@@ -181,7 +225,7 @@ function Painel() {
                                 text-white
                                 rounded-full
                                 bg-green-500'
-                                onClick={()=> updateUser(i)}
+                                onClick={()=> updateUser(u)}
                                 >V</a>
                                 <a  className='curso-pointer
                                 px-3
@@ -190,7 +234,7 @@ function Painel() {
                                 text-white
                                 rounded-full
                                 bg-red-500'
-                                onClick={()=> deleteUser(i)}
+                                onClick={()=> deleteUser(u)}
                                 >X</a>
                             </td>
                         </tr>
