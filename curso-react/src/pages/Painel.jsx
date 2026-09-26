@@ -35,6 +35,7 @@ function Painel() {
     }
 
     async function editUser(){
+        setSpiner(true)
          const { data, error } = await supabase
             .from('collaborators')
             .update(user)
@@ -48,14 +49,20 @@ function Painel() {
             setMsg("Usuário editado")
             setSpiner(false)
             loadUsers()
+            if(error){
+                setMsg(error.message)
+                return;
+            }
+            loadUsers()
     }
+     
 
    async function deleteUser (index){
         
             const { error } = await supabase
               .from('collaborators')
               .delete()
-              .eq('some_column', 'someValue')
+              .eq('id', index)
           
     }
 
@@ -234,7 +241,7 @@ function Painel() {
                                 text-white
                                 rounded-full
                                 bg-red-500'
-                                onClick={()=> deleteUser(u)}
+                                onClick={()=> deleteUser(u.id)}
                                 >X</a>
                             </td>
                         </tr>
